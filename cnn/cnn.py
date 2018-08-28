@@ -54,7 +54,7 @@ class CNN():
             'loss'
         ]
         for key in required_keys:
-            assert(key in settings, "{} key not found in settings. Please provide the required parameters.".format(key))
+            assert key in settings, "{} key not found in settings. Please provide the required parameters.".format(key)
 
         gpu_frac = settings['gpu_frac']
         GPU = settings['GPU']
@@ -62,15 +62,15 @@ class CNN():
         filters = settings['filters']
         loss = settings['loss']
 
-        assert(gpu_frac > 0 and gpu_frac <= 1.0, "gpu_frac out of bounds. Please provide a value within the continuous interval [0,1].")
-        assert(GPU > 0, "GPU must be >= 0.")
+        assert gpu_frac > 0 and gpu_frac <= 1.0, "gpu_frac out of bounds. Please provide a value within the continuous interval [0,1]."
+        assert GPU > 0, "GPU must be >= 0."
 
         layer_keys = [
             'conv',
             'pool',
             'fc'
         ]
-        assert(len(settings['layers']>3)
+        assert len(settings['layers']) > 3
         for layer in settings['layers']:
             for key, value in layer.items():
                 if key == 'conv':
@@ -83,6 +83,6 @@ class CNN():
                     print("{} is not a valid key for any layer type.".format(key))
                     raise
 
-        assert(loss in self.accepted_losses, "loss must be one of {}".format(self.accepted_losses))
+        assert loss in self.accepted_losses, "loss must be one of {}".format(self.accepted_losses)
 
         return
