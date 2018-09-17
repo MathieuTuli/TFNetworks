@@ -49,7 +49,6 @@ class FFNN():
         }
         """
         self.training_parameters = settings['training']
-        self.num_layers = 0
         self.check_settings(settings)
         self.build(settings)
 
@@ -68,7 +67,7 @@ class FFNN():
             layers = [data]
             for key, config in configs.items()
                 print('Building {}...'.format(key))
-                layers.append(self.new_layer(layers[-1], config))
+                layers.append(self.new_layer(layers[-1], key, config))
                 print('Completed building {}.\n'.format(key))
 
             print("\n\nNetwork build complete.\n")
@@ -80,8 +79,7 @@ class FFNN():
         batch_size = self.training_parameters['batch_size']
         num_iterations = self.training_parameters['num_iterations']
 
-    def new_layer(self, config):
-        input = config['input']
+    def new_layer(self, input, name, config):
         output_size = config['output_size']
         weight_init = config['weight_init']
         activation = config['activation']
@@ -94,10 +92,9 @@ class FFNN():
                                         stddev=(3.0 / (input_size + output_size)),
                                         dtype=tf.float64,
                                         seed=521,
-                                        name='{}_Weights'.format(self.num_layers)))
+                                        name='{}_Weights'.format(name)))
         bias = tf.Varible(tf.zeros(dtype=tf.float64, shape=[output_size]),
-                            name='{}_Bias'.format(self.num_layers))
-        self.num_layers += 1
+                            name='{}_Bias'.format(name))
 
         layer = None
         if activation == 'relu':
