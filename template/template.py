@@ -1,6 +1,4 @@
-import numpy as np
-
-class CNN():
+class FFNN():
     def __init__(self, settings):
         """
         {
@@ -27,29 +25,7 @@ class CNN():
                                             -...
             'layers':       <dict> sequence of layers
                             {
-                                'conv2d': <dict> layer specific settings
-                                    {
-                                        'name': <string>
-                                        'kern_size': <positive non-zero int tuple> (w,h)
-                                        'kern_num': <postive non-zero int>
-                                        'padding': <string> | "SAME" or "VALID"
-                                        'stride': <positive non-zero int>
-                                        'activation': <string>
-                                    }
-                                'pool2d': <dict> layer specific settings
-                                    {
-                                        'name': <string>
-                                        'kern_size': <positive non-zero int tuple> (w,h)
-                                        'stride': <positive non-zero int>
-                                        'activation': <string>
-                                        'type': <string> | "MAX"
-                                    }
-                                'fc': <dict> layer specific settings
-                                    {
-                                        'name': <string>
-                                        'output_size': <positive non-zero int>
-                                        'activation': <string>
-                                    }
+
                             },
             'training':     <dict> training settings
                             {
@@ -74,31 +50,13 @@ class CNN():
         with self.graph.as_default():
             print("\n\nBuilding network.\n")
 
-    def conv2d(self, input, config):
-        name = config['name']
-        kern_size = config['kern_size']
-        kern_num = config['kern_num']
-        padding = config['padding']
-        stride = config['stride']
+    def activation(self, config):
         activation = config['activation']
+        input = config['input']
 
-    def pool2d(self, input, config):
-        name = config['name']
-        kern_size = config['kern_size']
-        stride = config['stride']
-        activation = config['activation']
-        type = config['type']
-
-    def fc(self, input, config):
-        name = config['name']
-        output_size = config['output_size']
-        activation = config['activation']
-
-    def activation(self, input, config):
-        activation = config['activation']
-
-    def loss(self, input, config):
+    def loss(self, config):
         loss = config['loss']
+        input = config['input']
 
     def check_settings(self, settings):
         required_keys = [
@@ -117,41 +75,13 @@ class CNN():
         assert GPU > 0, "GPU assignment must be >= 0."
 
         layer_keys = [
-            'conv2d',
-            'pool2d',
-            'fc'
+
         ]
-        assert len(settings['layers']) > 3
         for layer in settings['layers']:
             for key, value in layer.items():
-                if key == 'conv2d':
+                if key == '':
                     required_keys = [
-                        'name',
-                        'kern_size',
-                        'kern_num',
-                        'padding',
-                        'stride',
-                        'activation'
-                    ]
-                    for setting in required_keys:
-                        assert setting in value, "{} key not found in {}. Please provide the required parameters.".format(settings, key)
-                    continue
-                elif key == 'pool2d':
-                    required_keys = [
-                        'name',
-                        'kern_size',
-                        'stride',
-                        'activation',
-                        'type'
-                    ]
-                    for setting in required_keys:
-                        assert setting in value, "{} key not found in {}. Please provide the required parameters.".format(settings, key)
-                    continue
-                elif key == 'fc':
-                    required_keys = [
-                        'name',
-                        'output_size',
-                        'activation'
+                        ''
                     ]
                     for setting in required_keys:
                         assert setting in value, "{} key not found in {}. Please provide the required parameters.".format(settings, key)
@@ -166,7 +96,7 @@ class CNN():
                     accepted_losses = [
                         'mean_squared_error'
                     ]
-                    assert value in accepted_losses, "loss must be one of {}".format(accepted_losses)
+                    assert loss in accepted_losses, "loss must be one of {}".format(accepted_losses)
                 else:
                     print("{} is not a valid key for any training setting.".format(key))
                     raise
