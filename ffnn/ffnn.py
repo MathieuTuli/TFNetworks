@@ -50,7 +50,18 @@ class FFNN():
         """
         self.training_parameters = settings['training']
         self.check_settings(settings)
+        self.load_data(settings['data'])
         self.build(settings)
+
+    def load_data(self):
+'''
+        TODO:   self.input_dimensions, from load_data
+                self.output_dimensions, from load_data
+                self.input_dtype
+                self.output_dtype
+                self.num_samples
+'''
+        return
 
     def build(self, settings):
         import tensorflow as tf
@@ -60,24 +71,68 @@ class FFNN():
             device_count = {'GPU': settings['GPU']}
         )
         self.sess = tf.Session(config=config, graph=self.graph)
+
+        self.input = tf.placeholder(dtype=self.input_dtype, shape=self.input_dimensions, name='input')
+        self.target = tf.placeholder(dtype=self.output_dtype, shape=self.output_dimensions, name='target')
+        self.layers = list()
+        self.layer_names = list()
+        self.network_variable_scope = 'network_layers'
+
         with self.graph.as_default():
             print("\n\nBuilding network.\n")
-
             configs = settings['layers']
-            layers = [data]
-            for key, config in configs.items()
-                print('Building {}...'.format(key))
-                layers.append(self.new_layer(layers[-1], key, config))
-                print('Completed building {}.\n'.format(key))
 
+            with tf.variable_scope(self.net_variable_scope):
+                self.layers.append(input)
+                self.layer_names.append('input')
+                for layer_name, config in configs.items()
+                    print('Building {}...'.format(layer_name))
+                    self.layers.append(self.new_layer(self.layers[-1], layer_name, config))
+                    self.layer_names.append('layer_name')
+                    print('Completed building {}.\n'.format(layer_name))
+
+            self.predictions = self.layers[-1]
             print("\n\nNetwork build complete.\n")
 
+    def generate_for_train(self):
+        return data, target
+
     def train(self):
-        loss = self.training_parameters['loss']
+        optimizer = self.training_parameters['optimizer']
         learning_rate = self.training_parameters['learning_rate']
         weight_decay = self.training_parameters['weight_decay']
         batch_size = self.training_parameters['batch_size']
+        num_batches = self.num_samples / batch_size
         num_iterations = self.training_parameters['num_iterations']
+
+        loss = self.loss(self.training_parameters['loss'])
+
+        if optimizer == 'adam':
+            optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        else:
+            raise ValueError("Woops, that isn't an optimizer I know. Something went wrong.")
+
+        train_optimizer = optimizer.minimize(loss)
+
+        classification_accuracy =   tf.subtract(
+                                        1.0,
+                                        tf.reduce_mean(
+                                            tf.cast(
+                                                tf.equal(
+                                                    tf.argmax(self.predictions, 1),
+                                                    tf.cast(self.target, tf.int64)),
+                                                tf.float32))) * 100
+
+        sess.run(tf.global_variables_initializer)
+
+        for i in range(num_iterations):
+            batch_data, batch_target = self.generate_batch(num_iterations, i, batch_size)
+
+            sess.run(train_optimizer, feed_dict={self.input:batch_data, self.target:batch_target})
+
+            if i != 0 and i % num_batches == 0:
+                self.train_statistics(loss, classification_accuracy, batch_data, batch_target)
+
 
     def new_layer(self, input, name, config):
         output_size = config['output_size']
@@ -105,8 +160,20 @@ class FFNN():
         assert layer is not None, "Layer was 'None' while building. Check your settings and assert tensorflow didn't run into any memory issues or such."
         return tf.nn.dropout(layer, dropout)
 
-    def loss(self, config):
-        loss = config['loss']
+    def loss(self, loss, parameters):
+        if loss == 'cross_entropy':
+            wdc = self.training_parameters['weight_decay']
+            target = self.target
+            predictions = self.predictions
+
+            hidden_weights = self.graph.get_tensor_by_name("{}/{}_Weights:0".format(self.net_variable_scope, self.layer_names[1]))
+            output_weights = self.graph.get_tensor_by_name("{}/{}_Weights:0".format(self.net_variable_scope, self.layer_names[-1]))
+
+            Ld = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels = tf.one_hot(indices = tf.cast(target, tf.int32), depth = 10,on_value = 1.0, off_value = 0.0, axis = -1), logits = predictons))
+            Lw = (wdc / 2) * tf.reduce_sum(tf.square(hidden_weights)) * tf.reduce_sum(tf.square(output_weights))
+            return Ld + Lw
+        else:
+            raise ValueError("Woops, that isn't a loss function I know. Something went wrong.")
 
     def check_settings(self, settings):
         required_keys = [
