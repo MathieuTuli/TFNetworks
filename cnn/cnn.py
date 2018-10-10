@@ -1,69 +1,16 @@
 import numpy as np
+from termcolor import colored
+
+print(colored('\n TensorFlow CNN Implementation', 'blue'), colored('\n By Mathieu Tuli', 'red'))
+print(colored('\n The following lists the settings template to follow to build the graph:', 'yellow'))
+print(colored('\n ', 'green'))
 
 class CNN():
     def __init__(self, settings):
-        """
-        {
-        settings is dict of settings for the network
-            **REQUIRED**
-            'gpu_frac':     <float> gpu fraction | [0,1],
-            'GPU':          <int> GPU num | [1, your machine gpu count],
-            'data':         <string> path to data dir, formatted as follows:
-                                -data
-                                    -training
-                                        -images
-                                            -...
-                                        -labels
-                                            -...
-                                    -validation
-                                        -images
-                                            -...
-                                        -labels
-                                            -...
-                                    -testing
-                                        -images
-                                            -...
-                                        -labels
-                                            -...
-            'layers':       <dict> sequence of layers
-                            {
-                                'conv2d': <dict> layer specific settings
-                                    {
-                                        'name': <string>
-                                        'kern_size': <positive non-zero int tuple> (w,h)
-                                        'kern_num': <postive non-zero int>
-                                        'padding': <string> | "SAME" or "VALID"
-                                        'stride': <positive non-zero int>
-                                        'activation': <string>
-                                    }
-                                'pool2d': <dict> layer specific settings
-                                    {
-                                        'name': <string>
-                                        'kern_size': <positive non-zero int tuple> (w,h)
-                                        'stride': <positive non-zero int>
-                                        'activation': <string>
-                                        'type': <string> | "MAX"
-                                    }
-                                'fc': <dict> layer specific settings
-                                    {
-                                        'name': <string>
-                                        'output_size': <positive non-zero int>
-                                        'activation': <string>
-                                    }
-                            },
-            'training':     <dict> training settings
-                            {
-                                'loss': <string> | "mean_squared_error"
-                            }
+        self.settings = settings
+        self.layers = list()
 
-            **OPTIONAL**
-                ??
-        }
-        """
-        self.check_settings(settings)
-        self.build(settings)
-
-    def build(self, settings):
+    def build(self):
         import tensorflow as tf
         self.graph = tf.Graph()
         config = tf.ConfigProto(
@@ -74,99 +21,78 @@ class CNN():
         with self.graph.as_default():
             print("\n\nBuilding network.\n")
 
-    def conv2d(self, input, config):
-        name = config['name']
-        kern_size = config['kern_size']
-        kern_num = config['kern_num']
-        padding = config['padding']
-        stride = config['stride']
-        activation = config['activation']
+    def conv2d(self,
+               name,
+               input,
+               filter_size,
+               num_filters,
+               stride,
+               padding,
+               activation='relu',
+               use_pooling=True,
+               kernel_size = None,
+               kernel_stride = None):
 
-    def pool2d(self, input, config):
-        name = config['name']
-        kern_size = config['kern_size']
-        stride = config['stride']
-        activation = config['activation']
-        type = config['type']
+        input_shape = input.get_shape().as_list()[-1]
+        shape = [filter_size, filter_size, input_shape, num_filters]
+        weights = tf.Variable(tf.truncated_normal(shape,
+                                                  stddev=0.05,
+                                                  dtype=tf.float64,
+                                                  name='{}_Weights'.format(name)))
+        biases = tf.Variable(tf.constant(value=0.05,
+                                         dtype=tf.float64,
+                                         shape=num_filters,
+                                         name='{}_Biases'.format(name)))
+        layer = tf.nn.conv2d(input=input,
+                             filter=weights,
+                             strides=[1,stride,stride,1],
+                             padding=padding,
+                             name='{}_Layer'.format(name))
+        layer += biases
 
-    def fc(self, input, config):
-        name = config['name']
-        output_size = config['output_size']
-        activation = config['activation']
+        if use_pooling:
+            layer = tf.nn.max_pool(value=layer,
+                                   ksize=[1, kernel_size, kernel_size, 1],
+                                   strides=[1, kernel_stride, kernel_stride, 1],
+                                   padding=padding)
 
-    def activation(self, input, config):
-        activation = config['activation']
+        if activation == 'relu':
+            layer = tf.nn.relu(layer)
+        else:
+            raise "Unknown activation function in convolutional layer"
 
-    def loss(self, input, config):
-        loss = config['loss']
+        self.layers.append(layer)
+        return layer, weights
 
-    def check_settings(self, settings):
-        required_keys = [
-            'gpu_frac',
-            'GPU',
-            'layers',
-            'training'
-        ]
-        for key in required_keys:
-            assert key in settings, "{} key not found in settings. Please provide the required parameters.".format(key)
+    def flatten(self, input):
+        input_shape = input.get_shape() #assume [num_images, img_height, img_width, num_channels]
+        num_features = input_shape[1:4].num_elements()
+        flattened = tf.reshape(input, [-1, num_features]) #[num_images, num_features]
+        return flattened, num_features
 
-        gpu_frac = settings['gpu_frac']
-        GPU = settings['GPU']
+    def fully_connected(self,
+                        input,
+                        num_outputs,
+                        use_activation=True,
+                        activation='relu'):
 
-        assert gpu_frac > 0 and gpu_frac <= 1.0, "gpu_frac out of bounds. Please provide a value within the continuous interval [0,1]."
-        assert GPU > 0, "GPU assignment must be >= 0."
+        input_shape = input.get_shape().as_list()[-1]
+        shape = [num_outputs]
+        weights = tf.Variable(tf.truncated_normal(shape,
+                                                  stddev=0.05,
+                                                  dtype=tf.float64,
+                                                  name='{}_Weights'.format(name)))
+        biases = tf.Variable(tf.constant(value=0.05,
+                                         dtype=tf.float64,
+                                         shape=num_outputs,
+                                         name='{}_Biases'.format(name)))
+        layer = tf.matmul(input, weights) + biases
 
-        layer_keys = [
-            'conv2d',
-            'pool2d',
-            'fc'
-        ]
-        assert len(settings['layers']) > 3
-        for layer in settings['layers']:
-            for key, value in layer.items():
-                if key == 'conv2d':
-                    required_keys = [
-                        'name',
-                        'kern_size',
-                        'kern_num',
-                        'padding',
-                        'stride',
-                        'activation'
-                    ]
-                    for setting in required_keys:
-                        assert setting in value, "{} key not found in {}. Please provide the required parameters.".format(settings, key)
-                    continue
-                elif key == 'pool2d':
-                    required_keys = [
-                        'name',
-                        'kern_size',
-                        'stride',
-                        'activation',
-                        'type'
-                    ]
-                    for setting in required_keys:
-                        assert setting in value, "{} key not found in {}. Please provide the required parameters.".format(settings, key)
-                    continue
-                elif key == 'fc':
-                    required_keys = [
-                        'name',
-                        'output_size',
-                        'activation'
-                    ]
-                    for setting in required_keys:
-                        assert setting in value, "{} key not found in {}. Please provide the required parameters.".format(settings, key)
-                    continue
-                else:
-                    print("{} is not a valid key for any layer type.".format(key))
-                    raise
+        if use_activcation:
+            if activation == 'relu':
+                layer = tf.nn.relu(layer)
+            else:
+                raise "Unknown activation function in fully_connected layer"
 
-        for setting in settings['training']:
-            for key, value in settings.items():
-                if key == 'loss':
-                    accepted_losses = [
-                        'mean_squared_error'
-                    ]
-                    assert value in accepted_losses, "loss must be one of {}".format(accepted_losses)
-                else:
-                    print("{} is not a valid key for any training setting.".format(key))
-                    raise
+        self.layers.append(layer)
+        return layerØ

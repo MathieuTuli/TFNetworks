@@ -48,10 +48,11 @@ class FFNN():
                 ??
         }
         """
-        self.training_parameters = settings['training']
-        self.check_settings(settings)
-        self.load_data(settings['data'])
-        self.build(settings)
+        if settings not None:
+            self.training_parameters = settings['training']
+            self.check_settings(settings)
+            self.load_data(settings['data'])
+            self.build(settings)
 
     def load_data(self):
 '''
