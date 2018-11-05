@@ -1,15 +1,7 @@
 #Project files
-YOLO/IMRSV_tracker/model_data/yolo.h5
-*.avi
-*.h5
-*.caffemodel
-*.png
-*.xml
-*.MOV
-*.json
 
 # Byte-compiled / optimized / DLL files
-__pycache__/
+*/__pycache__/*
 *.py[cod]
 *$py.class
 
