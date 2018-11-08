@@ -5,7 +5,6 @@
         -> Train
         -> Train on Google Cloud ML (eventually)
 '''
-# import numpy as np
 from termcolor import colored
 
 print(colored('\n TensorFlow CNN Implementation', 'blue'),
