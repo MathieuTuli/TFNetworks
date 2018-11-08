@@ -1,5 +1,5 @@
 '''
-    Tensorflow CNN Implementation
+Tensorflow CNN network
 '''
 import tensorflow as tf
 
@@ -7,17 +7,31 @@ from NetworkBase import NetworkBase
 
 
 class CNN(NetworkBase):
+    '''
+    TensorFlow implementation of an adaptable Convolutional Neural Network
+    '''
     def __init__(self, config):
+        '''
+        Inherited from NetworkBase
+        config: dict | has some required_keys
+            *See NetworkBase pydoc for its required_keys
+            *required*
+            *optional*
+        '''
         NetworkBase.__init__(config)
-        self.parse_config(config)
 
     def build(self, config):
+        '''
+        Build the next from config
+        '''
         with self.graph.as_default():
             print("\n\nBuilding network.\n")
+            for i, layer in enumerate(self.layers):
+                continue
 
     def conv2d(self,
-               name,
                layer_input,
+               name,
                filter_size,
                num_filters,
                stride,
@@ -26,6 +40,20 @@ class CNN(NetworkBase):
                use_pooling=True,
                kernel_size=None,
                kernel_stride=None):
+        '''
+        Add a convolutional layer
+
+        layer_input: tf layer | previous layer
+        name: str | name of this layer. Be informative, for your own sake
+        filter_size: int | width and height
+        num_filters: int
+        stride: int
+        padding: str | ['VALID', 'SAME']
+        activation: str | ['relu']
+        use_pooling: boolean
+        kernel_size: int | width and height
+        kernel_stride: int
+        '''
         input_shape = layer_input.get_shape().as_list()[-1]
         shape = [filter_size, filter_size, input_shape, num_filters]
         weights = tf.Variable(
@@ -61,7 +89,12 @@ class CNN(NetworkBase):
         return layer, weights
 
     def flatten(self, layer_input):
-        # assume [num_images, img_height,     img_width, num_channels]
+        '''
+        Flatten layer
+
+        layer_input: tf layer | previous layer
+        '''
+        # assume [num_images, img_height, img_width, num_channels]
         input_shape = layer_input.get_shape()
 
         num_features = input_shape[1:4].num_elements()
@@ -77,6 +110,15 @@ class CNN(NetworkBase):
                         num_outputs,
                         use_activation=True,
                         activation='relu'):
+        '''
+        Add a fully connected layer
+
+        layer_input: tf layer | previous layer
+        name: str | name of this layer. Be informative, for your own sake
+        num_outputs: int
+        use_activation: boolean
+        activation: str | ['relu']
+        '''
         # input_shape = layer_input.get_shape().as_list()[-1]
         shape = [num_outputs]
         weights = tf.Variable(
@@ -94,13 +136,16 @@ class CNN(NetworkBase):
             if activation == 'relu':
                 layer = tf.nn.relu(layer)
             else:
-                raise "Unknown activation function in fully_connected \
-                    layer"
+                raise Exception("Unknown activation function in\
+                    fully_connected layer")
 
         self.layers.append(layer)
         return layer
 
     def child_parse_config(self, config):
+        '''
+        Parses the config file to assert validity for CNN network.
+        '''
         required_keys = [
             ]
 
