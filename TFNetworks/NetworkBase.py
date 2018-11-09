@@ -3,9 +3,10 @@ TensorFlow Base Network structure all will inherit from
 '''
 
 import copy
+import pathlib
 import tensorflow as tf
 
-from warning import warn
+from warnings import warn
 
 
 class NetworkBase():
@@ -34,6 +35,7 @@ class NetworkBase():
 
         self.config = copy.deepcopy(config)
         self.results_dir = self.config['results_dir']
+        pathlib.Path(self.results_dir).mkdir(parents=True, exist_ok=True)
         self.learning_rate = self.config['learning_rate']
         self.max_iter = self.config['max_iter']
 
@@ -62,7 +64,7 @@ class NetworkBase():
 
     def train(self, save_every=-1):
         '''
-        save_every: int | default = -1. Set to -1 to not save, else\
+        save_every: int | default = -1. Set to -1 to not save, else
             it will save every 'save_every' epochs between 0 and max_iter
         '''
         for epoch in range(0, self.max_iter):
@@ -92,6 +94,7 @@ class NetworkBase():
             'results_dir',
             'max_iter',
             'learning_rate',
+            'placeholders',
         ]
 
         req_sub_keys = {
@@ -113,6 +116,13 @@ class NetworkBase():
 
         if config['debug']:
             print("Debug mode.", config)
+
+    def visualize_tensorboard(self):
+        '''
+        Child must overwrite
+        '''
+        raise Exception("The visualize_tensorboard() function must be\
+            overwritten completely")
 
     def child_parse_config(self, config):
         '''

@@ -1,0 +1,64 @@
+{
+    "debug": true,
+    "gpu_settings": {
+        "GPU": 0,
+        "gpu_frac": 0.9
+    },
+    "results_dir": "results",
+    "max_iter": 50,
+    "learning_rate": 0.01,
+    "placeholders": {
+        "img_width": 28,
+        "img_height": 28,
+        "img_size_flat": 784,
+        "num_channels": 1,
+        "num_classes": 10
+    },
+    "layers": {
+        "layer0": {
+            "conv2d": {
+                "layer_input": "x_image",
+                "filter_size": 5,
+                "num_filters": 16,
+                "use_pooling": true
+            }
+        },
+        "layer1": {
+            "conv2d": {
+                "layer_input": "layer0",
+                "filter_size": 5,
+                "num_filters": 36,
+                "use_pooling": true
+            }
+        },
+        "layer2": {
+            "flatten": {
+                "layer_input": "layer1"
+            }
+        },
+        "layer3": {
+            "fully_connected": {
+                "layer_input": "layer2",
+                "num_outputs": 128,
+                "use_activation": true
+            }
+        },
+        "layer4": {
+            "prediction": {
+                "layer_input": "layer4",
+                "regularizer": "softmax"
+            }
+        }
+    },
+    "cost": {
+        "layer_input": "layer3",
+        "cost": "cross_entropy",
+        "cost_aggregate": "reduce_mean"
+    },
+    "optimizer": {
+        "optimization": "adam"
+    },
+    "performance": {
+        "accuracy_metric": "reduce_mean"
+    }
+}
