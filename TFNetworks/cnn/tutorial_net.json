@@ -17,7 +17,7 @@
     "layers": {
         "layer0": {
             "conv2d": {
-                "layer_input": "x_image",
+                "layer_input": "x",
                 "filter_size": 5,
                 "num_filters": 16,
                 "use_pooling": true

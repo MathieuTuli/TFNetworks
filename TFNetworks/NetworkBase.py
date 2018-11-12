@@ -40,6 +40,7 @@ class NetworkBase():
         self.max_epoch = self.config['max_epoch']
 
         self.layers = list()
+        self.layer_names = list()
         self.graph = tf.Graph()
 
         gpu_settings = config['gpu_settings']

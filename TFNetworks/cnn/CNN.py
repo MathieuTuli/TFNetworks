@@ -109,6 +109,21 @@ class CNN(NetworkBase):
             print("\n\nBuilding network.\n")
             for layer_name, layer in layers.items():
                 for layer_type, layer_options in layer.items():
+                    if len(self.layers) == 0:
+                        prev_layer = self.x
+                    else:
+
+                        if 'layer_input' in layer_options:
+                            prev_name = self.layer_options['layer_input']
+                            curr_name = self.layer_options['name']
+                            if layer_options['layer_input'] == 'x':
+                                prev_layer = self.x
+                            else:
+                                self.layers[self.layer_names.index(
+                                    layer_options['name'])]
+                        else:
+                            prev_layer = self.layers[-1]
+
                     if layer_type == 'conv2d':
                         conv_layer, conv_weights = self.conv2d(layer_options)
                         self.layers.append(conv_layer)
@@ -456,6 +471,10 @@ class CNN(NetworkBase):
                             assert param in possible_params, "'{}' is not a \
                                 vaid layer_parameter for layer '{}'"\
                                 .format(param, layer_type)
+                            assert 'name' in layer_parameters, "'name' is not\
+                                a user defined parameter. It must be. All\
+                                    layers must have names."
+
             if key in req_sub_keys:
                 for sub_key in req_sub_keys[key]:
                     assert (sub_key in config[key]),\
