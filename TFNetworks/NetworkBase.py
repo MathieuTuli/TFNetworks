@@ -24,7 +24,7 @@ class NetworkBase():
                         'gpu_frac': float | gpu memory fraction
                         'GPU': int | GPU device number
                 'results_dir': str
-                'max_iter': int | for training. epochs [0 -> max_iter]
+                'max_epoch': int | for training. epochs [0 -> max_epoch]
                 'learning_rate': float
             *optional*
                 'random_seed*: int
@@ -37,7 +37,7 @@ class NetworkBase():
         self.results_dir = self.config['results_dir']
         pathlib.Path(self.results_dir).mkdir(parents=True, exist_ok=True)
         self.learning_rate = self.config['learning_rate']
-        self.max_iter = self.config['max_iter']
+        self.max_epoch = self.config['max_epoch']
 
         self.layers = list()
         self.graph = tf.Graph()
@@ -62,21 +62,11 @@ class NetworkBase():
         '''
         raise Exception("The build() function must be overwritten completely")
 
-    def train(self, save_every=-1):
-        '''
-        save_every: int | default = -1. Set to -1 to not save, else
-            it will save every 'save_every' epochs between 0 and max_iter
-        '''
-        for epoch in range(0, self.max_iter):
-            self.learn_from_epoch()
-            if save_every > 0 and epoch % save_every == 0:
-                self.save()
-
-    def learn_from_epoch(self):
+    def train(self, settings):
         '''
         Child must overwrite.
         '''
-        raise Exception("The learn_from_epoch() function must be overwritten\
+        raise Exception("The train() function must be overwritten\
             completely")
 
     def save(self):
@@ -92,7 +82,7 @@ class NetworkBase():
             'debug',
             'gpu_settings',
             'results_dir',
-            'max_iter',
+            'max_epoch',
             'learning_rate',
             'placeholders',
         ]
