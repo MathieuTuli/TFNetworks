@@ -5,7 +5,7 @@
         "gpu_frac": 0.9
     },
     "results_dir": "results",
-    "max_iter": 50,
+    "max_epoch": 50,
     "learning_rate": 0.01,
     "placeholders": {
         "img_width": 28,
@@ -18,6 +18,7 @@
         "layer0": {
             "conv2d": {
                 "layer_input": "x",
+                "name": "layer0",
                 "filter_size": 5,
                 "num_filters": 16,
                 "use_pooling": true
@@ -26,6 +27,7 @@
         "layer1": {
             "conv2d": {
                 "layer_input": "layer0",
+                "name": "layer1",
                 "filter_size": 5,
                 "num_filters": 36,
                 "use_pooling": true
@@ -33,25 +35,36 @@
         },
         "layer2": {
             "flatten": {
-                "layer_input": "layer1"
+                "layer_input": "layer1",
+                "name":"layer2"
             }
         },
         "layer3": {
             "fully_connected": {
                 "layer_input": "layer2",
+                "name": "layer3",
                 "num_outputs": 128,
                 "use_activation": true
             }
         },
         "layer4": {
+            "fully_connected": {
+                "layer_input": "layer3",
+                "name": "layer4",
+                "num_outputs": 10,
+                "use_activation": true
+            }
+        },
+        "prediction": {
             "prediction": {
                 "layer_input": "layer4",
+                "name": "prediction",
                 "regularizer": "softmax"
             }
         }
     },
     "cost": {
-        "layer_input": "layer3",
+        "layer_input": "layer4",
         "cost": "cross_entropy",
         "cost_aggregate": "reduce_mean"
     },
@@ -59,6 +72,12 @@
         "optimization": "adam"
     },
     "performance": {
+        "accuracy_metric": "reduce_mean"
+    },
+    "training": {
+        "batch_size": 64
+    },
+    "accuracy": {
         "accuracy_metric": "reduce_mean"
     }
 }

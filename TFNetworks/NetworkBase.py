@@ -29,35 +29,42 @@ class NetworkBase():
             *optional*
                 'random_seed*: int
         '''
-        self.random_seed = -1
-        self.parse_config(config)
-        self.child_parse_config(config)
-
         self.config = copy.deepcopy(config)
+        self.parse_config(config)
+
+        self.random_seed = -1
         self.results_dir = self.config['results_dir']
         pathlib.Path(self.results_dir).mkdir(parents=True, exist_ok=True)
         self.learning_rate = self.config['learning_rate']
         self.max_epoch = self.config['max_epoch']
 
-        self.layers = list()
-        self.layer_names = list()
         self.graph = tf.Graph()
 
         gpu_settings = config['gpu_settings']
         gpu_frac = gpu_settings['gpu_frac']
         GPU = gpu_settings['GPU']
 
-        config = tf.ConfigProto(
+        gpu_config = tf.ConfigProto(
             gpu_options=tf.GPUOptions(
                 per_process_gpu_memory_fraction=gpu_frac),
             device_count={'GPU': GPU}
         )
 
-        self.sess = tf.Session(config=config, graph=self.graph)
+        self.sess = tf.Session(config=gpu_config, graph=self.graph)
         self.summary_writer = tf.summary.FileWriter(self.results_dir,
                                                     self.sess.graph)
 
-    def build(self, config):
+        self.pre_child_init()
+        self.child_parse_config(self.config)
+        self.post_child_init()
+
+    def child_init(self):
+        '''
+        Child must overwrite
+        '''
+        raise Exception("The child_init() function must be overwritten \
+            completely")
+    def build(self, settings=None):
         '''
         Child must overwrite.
         '''

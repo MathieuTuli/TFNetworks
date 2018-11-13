@@ -2,6 +2,9 @@
 
 # Byte-compiled / optimized / DLL files
 */__pycache__/*
+*/data/*
+*/tutorials/*
+*/results/*
 *.py[cod]
 *$py.class
 *.swp
