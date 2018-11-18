@@ -8,6 +8,9 @@ It started out as a way of learning TensorFlow more in depth. Historically I hat
 - [ ] Layer by layer building
 - [ ] From config file building
 
+## Installation Instructions
+
+## Pre-trained Weights and Config Files
 
 ## TODO
 - [ ] Training on Google Cloud ML
