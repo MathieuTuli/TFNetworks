@@ -1,8 +1,13 @@
 # Tensorflow Networks
+**TFNetworks** is an easy to use API for building various types of networks in TensorFlow.
 
-**This is meant to be a series of templated classes for various types of networks. Easily build them using a single config.ini file, or calling the methods directly in-line.**
+## Why?
+It started out as a way of learning TensorFlow more in depth. Historically I hate using high-level libraries like Keras because I don't know what's fully going on in the background, so this serves as a Keras-like while also providing me with the knowledge of what's going on in the background.
 
-**Traning methods will be updated and augmented**
+## How does it work?
+- [x] Layer by layer building
+- [ ] From config file building
+
 
 ## TODO
 - [ ] Training on Google Cloud ML
