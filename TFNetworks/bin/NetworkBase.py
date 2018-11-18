@@ -20,7 +20,7 @@ class NetworkBase():
     '''
     def __init__(self, config: dict):
         '''
-        config: dict | has some required and optional keys
+        @param config: dict | has some required and optional keys
             *required*
                 'debug': boolean
                 'gpu_settings': dict | has some required keys
@@ -95,13 +95,6 @@ class NetworkBase():
         '''
         raise NotImplementedError("The visualize_tensorboard() function " +
                                   "must be overwritten completely")
-
-    def child_parse_config(self, config):
-        '''
-        Child must overwrite.
-        '''
-        raise NotImplementedError("The child_parse_config() function must " +
-                                  "be overwritten completely")
 
     def parse_config(self):
         '''

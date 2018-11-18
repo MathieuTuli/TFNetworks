@@ -10,12 +10,10 @@ Tensorflow CNN network
 #   -Fix layer name in json formatting
 #   -Fix child/parent init logic
 
-import json
 import time
 import tensorflow as tf
 import numpy as np
 
-from pathlib import Path
 from NetworkBase import NetworkBase
 
 
@@ -26,77 +24,26 @@ class CNN(NetworkBase):
         *For those who don't know, NHWC means your input has dimensions
             [Num_images, img_Height, img_Width, img_Channels]*
     '''
-    def __init__(self, config, config_from_file=True):
+    def __init__(self, config: dict):
         '''
         Inherited from NetworkBase
-        config: dict | has some required_keys
+        @param config: dict | has some required_keys
             *See NetworkBase pydoc for its required_keys
             *required*
             *optional*
         '''
-        if config_from_file:
-            assert (Path(config).is_file()), "Couldn't find path {}"\
-                .format(config)
-            with open(config, 'r') as f:
-                print("Config loaded.")
-                config = json.load(f)
 
-        self.iterations_passed = 0
-        super().__init__(config=config)
-
-    def pre_child_init(self):
-        '''
-        Before parsing config file in child
-        '''
-        self.layer_settings = {
-            'conv2d': {
-                'layer_input': None,
-                'name': 'conv2d',
-                'filter_size': 1,
-                'num_filters': None,
-                'stride': 1,
-                'padding': 'SAME',
-                'activation': 'relu',
-                'use_pooling': True,
-                'kernel_size': 1,
-                'kernel_stride': 1
-            },
-            'flatten': {
-                'layer_input': None,
-                'name': 'flatten'
-            },
-            'fully_connected': {
-                'layer_input': None,
-                'name': 'flatten',
-                'num_outputs': None,
-                'use_activation': True,
-                'activation': 'relu'
-            },
-            'prediction': {
-                'layer_input': None,
-                'name': 'prediction',
-                'regularizer': 'softmax'
-            },
-        }
-
-    def post_child_init(self):
-        '''
-        CNN initializer, overwriting call from NetworkBase
-        '''
-        self.x, self.y_true, self.y_true_cls =\
-            self.placeholders(self.config['placeholders'])
         self.layers = dict()
-        self.layers['x'] = self.x
-        self.batch_size = self.config['training']['batch_size']
+        NetworkBase.__init__(config=config)
 
     def placeholders(self, config):
         '''
         TensorFlow placeholders to be fed during training
-        settings: dict | has required keys
-        *required*
-            img_width: int
-            img_height: int
-            img_size_flat: int | flattened image size
+        @param settings: dict | has required keys
+            *required*
+                img_width: int
+                img_height: int
+                img_size_flat: int | flattened image size
         '''
         self.img_width = img_width = config['img_width']
         self.img_height = img_height = config['img_height']
@@ -121,34 +68,6 @@ class CNN(NetworkBase):
         '''
         Build the next from config
         '''
-        layers = self.config['layers']
-
-        with self.graph.as_default():
-            print("\n\nBuilding network.\n")
-            for layer_name, layer in layers.items():
-                for layer_type, layer_parameters in layer.items():
-                    prev_name = layer_parameters['layer_input']
-                    curr_name = layer_parameters['name']
-                    layer_parameters['layer_input'] = self.layers[prev_name]
-                    if layer_type == 'conv2d':
-                        conv_layer, conv_weights = self.conv2d(
-                            layer_parameters)
-                        self.layers[curr_name] = conv_layer
-                    elif layer_type == 'flatten':
-                        flattened, num_features = self.flatten(
-                            layer_parameters)
-                        self.layers[curr_name] = flattened
-                    elif layer_type == 'fully_connected':
-                        fc_layer = self.fully_connected(layer_parameters)
-                        self.layers[curr_name] = fc_layer
-                    elif layer_type == 'prediction':
-                        prediction_layer = self.prediction(layer_parameters)
-                        self.layers[curr_name] = prediction_layer
-                    else:
-                        raise Exception("Unknown layer type. \
-                            Why didn't child_config_parser() catch it?")
-            self.layers['y_pred_cls'] = tf.argmax(self.layers['prediction'],
-                                                  axis=1)
 
     def train(self,
               train_size,
@@ -157,10 +76,10 @@ class CNN(NetworkBase):
         '''
         Train your TensorFlow graph
 
-        save_every: int | default = -1. Set to -1 to not save, else
-            it will save every 'save_every' epochs between 0 and max_epoch
-        train_size: int | size of training data x
-        batch_generator: function
+        @param save_every: int | default = -1. Set to -1 to not save, else
+            will save every 'save_every' epochs between 0 and max_epoch
+        @param train_size: int | size of training data x
+        @param batch_generator: function
             *signature*
                 batch_generator(batch_start, batch_end)
                     ...
@@ -202,7 +121,8 @@ class CNN(NetworkBase):
                             accuracy_metric=metric)
                         acc = self.sess.run(accuracy,
                                             feed_dict=feed_dict_train)
-                        progress = "[" + "=" * int(20*batch/num_batches) + " " * int(20 - (20*batch/num_batches)) + "]"
+                        progress = "[" + "=" * int(20*batch/num_batches) + " " *\
+                            int(20 - (20*batch/num_batches)) + "]"
                         print(progress)
                         print("Accuracy: {:.3}".format(acc))
                         print("Batch Time: {:.3}".format(time.time() - batch_time))
@@ -212,9 +132,11 @@ class CNN(NetworkBase):
         '''
         Create weights
 
-        name: str
-        shape: list | example -> [filter_size, filter_size, input_shape,
-        num_filters]
+        @param name: str
+        @param shape: list | example -> [filter_size, filter_size, input_shape,
+        @param num_filters]
+
+        @return weights: TensorFlow Variable
         '''
         weights = tf.Variable(
             tf.truncated_normal(shape,
@@ -227,8 +149,10 @@ class CNN(NetworkBase):
         '''
         Create bias
 
-        name: str
-        shape: list or int
+        @param name: str
+        @param shape: list or int
+
+        @return biases: Tensorflow Variable
         '''
         biases = tf.Variable(tf.constant(value=0.05,
                                          dtype=tf.float32,
@@ -252,17 +176,20 @@ class CNN(NetworkBase):
         '''
         Add a convolutional layer
 
-        settings: dict
-            layer_input: tf layer | previous layer
-            name: str | name of this layer. Be informative, for your own sake
-            filter_size: int | width and height
-            num_filters: int
-            stride: int
-            padding: str | ['VALID', 'SAME']
-            activation: str | ['relu']
-            use_pooling: boolean
-            kernel_size: int | width and height
-            kernel_stride: int
+        @param settings: dict
+            @key layer_input: Tensorflow Tensor | previous layer
+            @key name: str | name of this layer. Be informative, for your own sake
+            @key filter_size: int | width and height
+            @key num_filters: int
+            @key stride: int
+            @key padding: str | ['VALID', 'SAME']
+            @key activation: str | ['relu']
+            @key use_pooling: boolean
+            @key kernel_size: int | width and height
+            @key kernel_stride: int
+
+        @return layer: TensorFlow Tensor
+        @return weights: TensorFlow Variable
         '''
         settings = self.configure_layer_settings(layer_type='conv2d',
                                                  user_parameters=settings)
@@ -303,15 +230,20 @@ class CNN(NetworkBase):
         if activation == 'relu':
             layer = tf.nn.relu(layer)
         else:
-            raise Exception("Unknown activation function in convolutional \
-                layer")
+            raise ValueError("Unknown activation function in convolutional " +
+                             "layer")
         return layer, weights
 
     def flatten(self, settings):
         '''
         Flatten layer of dimension 4 to dimension 2
 
-        layer_input: tf layer | previous layer (to flatten)
+        @param layer_input: Tensorflow Tensor | previous layer (to flatten)
+        @param settings: dict
+            @key layer_input: TensorFlow Tensor
+
+        @return flattened: TensorFlow Tensor | Flattend laer
+        @return num_features: int
         '''
         settings = self.configure_layer_settings(layer_type='flatten',
                                                  user_parameters=settings)
@@ -332,13 +264,16 @@ class CNN(NetworkBase):
         '''
         Add a fully connected layer
 
-        settings: dict
-            layer_input: tf layer | previous layer. Input must be
+        @param settings: dict
+            @key layer_input: TensorFlow Tensor| Previous layer. Input must be
                 [num_images, input_shape]
-            name: str | name of this layer. Be informative, for your own sake
-            num_outputs: int
-            use_activation: boolean
-            activation: str | ['relu']
+            @key name: str | name of this layer. Be informative, for your own sake
+            @key num_outputs: int
+            @key use_activation: boolean
+            @key activation: str | Type of activation function
+                *options* -> ['relu']
+
+        @return layer: TensorFlow Tensor | FC layer
         '''
         settings = self.configure_layer_settings(layer_type='fully_connected',
                                                  user_parameters=settings)
@@ -359,8 +294,8 @@ class CNN(NetworkBase):
             if activation == 'relu':
                 layer = tf.nn.relu(layer)
             else:
-                raise Exception("Unknown activation function in \
-                    fully_connected layer")
+                raise ValueError("Unknown activation function in " +
+                                 "fully_connected layer")
         return layer
 
     def prediction(self, settings):
@@ -368,9 +303,12 @@ class CNN(NetworkBase):
         Prediction layer
             returns regularized output of previous layer (usually a fc layer)
 
-        settings: dict
-            layer_input: tf layer
-            regularizer: str | ['softmax']
+        @param settings: dict
+            @key layer_input: TensorFlow Tensor
+            @key regularizer: str | Type of refularization
+                *options* -> ['softmax']
+
+        @return regularized: TensorFlow Tensor (regularized @param layer_input)
         '''
         settings = self.configure_layer_settings(layer_type='prediction',
                                                  user_parameters=settings)
@@ -381,7 +319,7 @@ class CNN(NetworkBase):
         if regularizer == "softmax":
             return tf.nn.softmax(layer_input)
         else:
-            raise Exception("Unkown regularizer for prediction")
+            raise ValueError("Unkown regularizer for prediction")
 
     def cost(self,
              layer_input,
@@ -391,20 +329,26 @@ class CNN(NetworkBase):
         '''
         Cost function to be optimized
 
-        cost: str | ['cross_entropy']
-        cost_aggregate: str | ['reduce_mean']
+        @para layer_input: Tensorflow Tensor
+        @param y_true: Tensorflow Placeholder
+        @param cost: str | Type of Tensorflow loss function
+            *options* -> ['cross_entropy']
+        @param cost_aggregate: str | Type of tf.math aggregate
+            *options* -> ['reduce_mean']
+
+        @return cost/loss: Tensorflow Tensor
         '''
         with self.graph.as_default():
             if cost == 'cross_entropy':
                 cost = tf.nn.softmax_cross_entropy_with_logits_v2(logits=layer_input,
-                                                               labels=y_true)
+                                                                  labels=y_true)
             else:
-                raise Exception("Unknown loss function")
+                raise ValueError("Unknown loss function")
 
             if cost_aggregate == 'reduce_mean':
                 cost_aggregate = tf.reduce_mean(cost)
             else:
-                raise Exception("Unknown cost function")
+                raise ValueError("Unknown cost function")
 
         return cost_aggregate
 
@@ -414,15 +358,18 @@ class CNN(NetworkBase):
         '''
         Optimization method
 
-        cost: TensorFlow variable | cost to minimize
-        optimization: str | ['adam']
+        @param cost: TensorFlow loss | loss to minimize
+        @param optimization: str | Type of Tensorflow Optimizer
+            *options* -> ['adam']
+
+        @return optimizer: TensorFlow Optimizer, defined by @param optimizer
         '''
         with self.graph.as_default():
             if optimization == 'adam':
                 optimizer = tf.train.\
                     AdamOptimizer(learning_rate=self.learning_rate).minimize(cost)
             else:
-                raise Exception("Unknown optimization method")
+                raise ValueError("Unknown optimization method")
         return optimizer
 
     def calculate_accuracy(self,
@@ -431,79 +378,16 @@ class CNN(NetworkBase):
         '''
         Performance Measures
 
-        y_pred_cls: TensorFlow variable
-        y_true_cls: TensorFlow variable
-        accuracy_metric: str | ['reduce_mean']
+        @param y_pred_cls: TensorFlow variable
+        @param y_true_cls: TensorFlow variable
+        @param accuracy_metric: str | ['reduce_mean']
+
+        @return accurac: Tensorflow Tensor, define by @param accuracy_metric
         '''
         correct_prediction = tf.equal(y_pred_cls, self.y_true_cls)
 
         if accuracy_metric == 'reduce_mean':
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
         else:
-            raise Exception("Unkown accuracy metric")
+            raise ValueError("Unkown accuracy metric")
         return accuracy
-
-    def child_parse_config(self, config):
-        '''
-        Parses the config file to assert validity for CNN network.
-
-        *Note: 'placeholders' is a required key from the parent class
-            NetworkBase. It must appear here with corresponding sub keys.
-        '''
-        required_keys = [
-            'placeholders',
-            'layers',
-            'cost',
-            'optimizer',
-            'accuracy',
-            'placeholders',
-            'training',
-        ]
-
-        req_sub_keys = {
-            'placeholders': [
-                'img_width',
-                'img_height',
-                'img_size_flat',
-                'num_channels',
-                'num_classes',
-            ],
-            'accuracy': [
-                'accuracy_metric',
-            ],
-            'training': [
-                'batch_size',
-            ]
-        }
-
-        possible_layers = list(self.layer_settings.keys())
-
-        # TODO: Could this be done recursively?
-        for key in required_keys:
-            assert (key in config), "Missing key '{}' in config".format(key)
-            if key == 'layers':
-                for layer_name, layer in config[key].items():
-                    for layer_type, layer_parameters in layer.items():
-                        assert (layer_type in possible_layers), "'{}' is not \
-                            a valid layer."
-                        possible_params = list(self.layer_settings[layer_type]
-                                                   .keys())
-                        # TODO: Undefined 'param' in assert message.
-                        #   Is there a workaround?
-                        # assert(all(param in possible_params
-                        #            for param in layer_parameters)),\
-                        #     "'{}' is not a valid layer_parameter for layer\
-                        #         '{}'".format(param, layer_type)
-
-                        for param in layer_parameters:
-                            assert param in possible_params, "'{}' is not a \
-                                vaid layer_parameter for layer '{}'"\
-                                .format(param, layer_type)
-                        assert 'layer_input' in layer_parameters,\
-                            "'layer_input' is not a user defined \
-                                parameter. It must be."
-
-            if key in req_sub_keys:
-                for sub_key in req_sub_keys[key]:
-                    assert (sub_key in config[key]),\
-                        "Missing key '{}' in config[{}]".format(sub_key, key)
