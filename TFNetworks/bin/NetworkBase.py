@@ -22,14 +22,16 @@ class NetworkBase():
         '''
         @param config: dict | has some required and optional keys
             *required*
-                'debug': boolean
-                'gpu_settings': dict | has some required keys
+                @key 'debug': boolean
+                @key 'gpu_settings': dict | has some required keys
                     *required*
-                        'gpu_frac': float | gpu memory fraction
-                        'GPU': int | GPU device number
-                'results_dir': str
+                        @key 'gpu_frac': float | gpu memory fraction
+                        @key 'GPU': int | GPU device number
+                @key 'results_dir': str
             *optional*
-                'random_seed*: int
+                @key 'random_seed': int
+                @key 'precision': int
+                    *options* -> [32, 64]
         '''
         self.required_keys = [
             'debug',
@@ -41,6 +43,7 @@ class NetworkBase():
         }
         self.optional_keys = [
             'random_seed',
+            'precision',
         ]
         self.config = copy.deepcopy(config)
         self.parse_config(config)
@@ -48,6 +51,15 @@ class NetworkBase():
         self.random_seed = -1
         if 'random_seed' in self.config:
             self.random_seed = self.config['random_seed']
+        self.precision = tf.float32
+        if 'precision' in self.config:
+            if config['precision'] == 32:
+                self.precision = tf.float32
+            elif config['precision'] == 64:
+                self.precision = tf.float64
+            else:
+                raise ValueError("'{}' is not a valid precision type. Choose either " +
+                                 "32 or 64")
         self.results_dir = self.config['results_dir']
         pathlib.Path(self.results_dir).mkdir(parents=True, exist_ok=True)
         self.learning_rate = self.config['learning_rate']

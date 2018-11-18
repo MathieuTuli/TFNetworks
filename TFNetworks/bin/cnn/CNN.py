@@ -10,11 +10,10 @@ Tensorflow CNN network
 #   -Fix layer name in json formatting
 #   -Fix child/parent init logic
 
-import time
 import tensorflow as tf
-import numpy as np
 
 from NetworkBase import NetworkBase
+from train import train
 
 
 class CNN(NetworkBase):
@@ -32,101 +31,59 @@ class CNN(NetworkBase):
             *required*
             *optional*
         '''
-
         self.layers = dict()
+        self.img_width = None
+        self.img_height = None
+        self.img_size_flat = None
+        self.num_channels = None
+        self.num_classes = None
         NetworkBase.__init__(config=config)
 
-    def placeholders(self, config):
+    def placeholders(self,
+                     img_width,
+                     img_height,
+                     img_size_flat,
+                     num_channels,
+                     num_classes):
         '''
         TensorFlow placeholders to be fed during training
-        @param settings: dict | has required keys
-            *required*
-                img_width: int
-                img_height: int
-                img_size_flat: int | flattened image size
+        @param img_width: int
+        @param img_height: int
+        @param img_size_flat: int | flattened image size
+        @param num_channels: int
+        @param num_classes: int
+
+        @return x: TensorFlow Placeholder
+        @return y_true: TensorFlow Placeholder
         '''
-        self.img_width = img_width = config['img_width']
-        self.img_height = img_height = config['img_height']
-        self.img_size_flat = img_size_flat = config['img_size_flat']
-        self.num_channels = num_channels = config['num_channels']
-        self.num_classes = num_classes = config['num_classes']
+        self.img_width = img_width
+        self.img_height = img_height
+        self.img_size_flat = img_size_flat
+        self.num_channels = num_channels
+        self.num_classes = num_classes
 
         with self.graph.as_default():
-            x = tf.placeholder(tf.float32,
+            X = tf.placeholder(self.precision,
                                shape=[None, img_size_flat],
-                               name='root_input_x')
-            x = tf.reshape(x, [-1, img_width, img_height, num_channels])
+                               name='X')
+            X = tf.reshape(X, [-1, img_width, img_height, num_channels])
 
-            y_true = tf.placeholder(tf.float32,
+            Y_true = tf.placeholder(self.precision,
                                     shape=[None, num_classes],
-                                    name='y_true')
-            y_true_cls = tf.argmax(y_true, axis=1)
+                                    name='Y_true')
+            return X, Y_true
 
-            return x, y_true, y_true_cls
+    def build_from_cli(self):
+        '''
+        Opens a cli to build the netork
+        '''
+        print("\n\nCNN\n")
 
     def build(self, settings=None):
         '''
-        Build the next from config
+        Unneeded.
         '''
-
-    def train(self,
-              train_size,
-              batch_generator,
-              save_every=-1):
-        '''
-        Train your TensorFlow graph
-
-        @param save_every: int | default = -1. Set to -1 to not save, else
-            will save every 'save_every' epochs between 0 and max_epoch
-        @param train_size: int | size of training data x
-        @param batch_generator: function
-            *signature*
-                batch_generator(batch_start, batch_end)
-                    ...
-                    return x_batch, y_true_batch
-        '''
-        start_time = time.time()
-        num_batches = int(train_size / self.batch_size)
-        metric = self.config['accuracy']['accuracy_metric']
-        cost_input = self.config['cost']['layer_input']
-        cost = self.cost(layer_input=self.layers[cost_input],
-                         y_true=self.y_true,
-                         cost=self.config['cost']['cost'],
-                         cost_aggregate=self.config['cost']['cost_aggregate'])
-        optimizer = self.optimizer(cost=cost,
-                                   optimization=self.config['optimizer']['optimization'])
-
-        with self.graph.as_default():
-            self.sess.run(tf.global_variables_initializer())
-            for epoch in range(0, self.max_epoch):
-                if save_every > 0 and epoch % save_every == 0:
-                    self.save()
-                for batch in range(num_batches):
-                    batch_time = time.time()
-                    batch_start = self.batch_size * batch
-                    batch_end = batch_start + self.batch_size
-                    x_batch, y_true_batch = batch_generator(batch_start,
-                                                            batch_end)
-                    x_batch = np.reshape(x_batch, [-1,
-                                                   self.img_width,
-                                                   self.img_height,
-                                                   self.num_channels])
-                    feed_dict_train = {self.x: x_batch,
-                                       self.y_true: y_true_batch}
-                    self.sess.run(optimizer, feed_dict=feed_dict_train)
-
-                    if not batch % 5:
-                        accuracy = self.calculate_accuracy(
-                            y_pred_cls=self.layers['y_pred_cls'],
-                            accuracy_metric=metric)
-                        acc = self.sess.run(accuracy,
-                                            feed_dict=feed_dict_train)
-                        progress = "[" + "=" * int(20*batch/num_batches) + " " *\
-                            int(20 - (20*batch/num_batches)) + "]"
-                        print(progress)
-                        print("Accuracy: {:.3}".format(acc))
-                        print("Batch Time: {:.3}".format(time.time() - batch_time))
-                        print("Total Time: {:.3}".format(time.time() - start_time))
+        pass
 
     def new_weights(self, name, shape):
         '''
@@ -141,7 +98,7 @@ class CNN(NetworkBase):
         weights = tf.Variable(
             tf.truncated_normal(shape,
                                 stddev=0.05,
-                                dtype=tf.float32,
+                                dtype=self.precision,
                                 name='{}_Weights'.format(name)))
         return weights
 
@@ -155,24 +112,23 @@ class CNN(NetworkBase):
         @return biases: Tensorflow Variable
         '''
         biases = tf.Variable(tf.constant(value=0.05,
-                                         dtype=tf.float32,
+                                         dtype=self.precision,
                                          shape=shape,
                                          name='{}_Biases'.format(name)))
         return biases
 
-    def configure_layer_settings(self,
-                                 layer_type: str,
-                                 user_parameters: dict):
-        assert(layer_type in list(self.layer_settings.keys())),\
-            "Woops. '{}' is not a valid layer_type. Can't configure \
-                settings.".format(layer_type)
-
-        layer_parameters = self.layer_settings[layer_type]
-        for parameter, value in user_parameters.items():
-            layer_parameters[parameter] = value
-        return layer_parameters
-
-    def conv2d(self, settings):
+    def conv2d(self,
+               layer_input=None,
+               name='conv2d',
+               filter_size=1,
+               num_filters=1,
+               stride=1,
+               padding='SAME',
+               activation='relu',
+               use_pooling=True,
+               kernel_size=1,
+               kernel_stride=1,
+               ):
         '''
         Add a convolutional layer
 
@@ -190,21 +146,8 @@ class CNN(NetworkBase):
 
         @return layer: TensorFlow Tensor
         @return weights: TensorFlow Variable
+        @return biases: TensorFlow Variable
         '''
-        settings = self.configure_layer_settings(layer_type='conv2d',
-                                                 user_parameters=settings)
-
-        layer_input = settings['layer_input']
-        name = settings['name']
-        filter_size = settings['filter_size']
-        num_filters = settings['num_filters']
-        stride = settings['stride']
-        padding = settings['padding']
-        activation = settings['activation']
-        use_pooling = settings['use_pooling']
-        kernel_size = settings['kernel_size']
-        kernel_stride = settings['kernel_stride']
-
         input_shape = layer_input.get_shape().as_list()[-1]
         shape = [filter_size, filter_size, input_shape, num_filters]
 
@@ -232,7 +175,7 @@ class CNN(NetworkBase):
         else:
             raise ValueError("Unknown activation function in convolutional " +
                              "layer")
-        return layer, weights
+        return layer, weights, biases
 
     def flatten(self, settings):
         '''
@@ -320,74 +263,3 @@ class CNN(NetworkBase):
             return tf.nn.softmax(layer_input)
         else:
             raise ValueError("Unkown regularizer for prediction")
-
-    def cost(self,
-             layer_input,
-             y_true,
-             cost='cross_entropy',
-             cost_aggregate='reduce_mean'):
-        '''
-        Cost function to be optimized
-
-        @para layer_input: Tensorflow Tensor
-        @param y_true: Tensorflow Placeholder
-        @param cost: str | Type of Tensorflow loss function
-            *options* -> ['cross_entropy']
-        @param cost_aggregate: str | Type of tf.math aggregate
-            *options* -> ['reduce_mean']
-
-        @return cost/loss: Tensorflow Tensor
-        '''
-        with self.graph.as_default():
-            if cost == 'cross_entropy':
-                cost = tf.nn.softmax_cross_entropy_with_logits_v2(logits=layer_input,
-                                                                  labels=y_true)
-            else:
-                raise ValueError("Unknown loss function")
-
-            if cost_aggregate == 'reduce_mean':
-                cost_aggregate = tf.reduce_mean(cost)
-            else:
-                raise ValueError("Unknown cost function")
-
-        return cost_aggregate
-
-    def optimizer(self,
-                  cost,
-                  optimization='adam'):
-        '''
-        Optimization method
-
-        @param cost: TensorFlow loss | loss to minimize
-        @param optimization: str | Type of Tensorflow Optimizer
-            *options* -> ['adam']
-
-        @return optimizer: TensorFlow Optimizer, defined by @param optimizer
-        '''
-        with self.graph.as_default():
-            if optimization == 'adam':
-                optimizer = tf.train.\
-                    AdamOptimizer(learning_rate=self.learning_rate).minimize(cost)
-            else:
-                raise ValueError("Unknown optimization method")
-        return optimizer
-
-    def calculate_accuracy(self,
-                           y_pred_cls,
-                           accuracy_metric='reduce_mean'):
-        '''
-        Performance Measures
-
-        @param y_pred_cls: TensorFlow variable
-        @param y_true_cls: TensorFlow variable
-        @param accuracy_metric: str | ['reduce_mean']
-
-        @return accurac: Tensorflow Tensor, define by @param accuracy_metric
-        '''
-        correct_prediction = tf.equal(y_pred_cls, self.y_true_cls)
-
-        if accuracy_metric == 'reduce_mean':
-            accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-        else:
-            raise ValueError("Unkown accuracy metric")
-        return accuracy
