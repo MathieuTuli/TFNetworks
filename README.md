@@ -1,6 +1,8 @@
 # Tensorflow Networks
 **TFNetworks** is a series of various networks built in TensorFlow.
 
+*I didn't know about [TFLearn](https://github.com/tflearn) when naming this
+
 My initial goal was to build something link [TFLearn](https://github.com/tflearn), but I have yet to decide if I will embark on such a lengthy project with m current workload. My current goal is to slowl build a TFLearn like librar as I build networks, while contributing to the TFLearn repository.
 
 ## Why?
