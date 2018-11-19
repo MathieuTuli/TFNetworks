@@ -81,20 +81,6 @@ class NetworkBase():
         self.summary_writer = tf.summary.FileWriter(self.results_dir,
                                                     self.sess.graph)
 
-    def build(self, settings=None):
-        '''
-        Child must overwrite.
-        '''
-        raise NotImplementedError("The build() function must be overwritten" +
-                                  "completely")
-
-    def train(self, settings):
-        '''
-        Child must overwrite.
-        '''
-        raise NotImplementedError("The train() function must be overwritten" +
-                                  "completely")
-
     def save(self):
         '''
         Save graph using summary writer.

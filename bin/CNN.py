@@ -13,7 +13,7 @@ Tensorflow CNN network
 import tensorflow as tf
 
 from NetworkBase import NetworkBase
-from train import train
+from Trainer import Trainer
 
 
 class CNN(NetworkBase):
@@ -31,12 +31,17 @@ class CNN(NetworkBase):
             *required*
             *optional*
         '''
-        self.layers = dict()
         self.img_width = None
         self.img_height = None
         self.img_size_flat = None
         self.num_channels = None
         self.num_classes = None
+
+        self.X, self.Y_true = None
+        self.prediction_layer = None
+        self.optimizer = None
+        self.layers = list()
+
         NetworkBase.__init__(config=config)
 
     def placeholders(self,
@@ -71,19 +76,9 @@ class CNN(NetworkBase):
             Y_true = tf.placeholder(self.precision,
                                     shape=[None, num_classes],
                                     name='Y_true')
+            self.X = X
+            self.Y_true = Y_true
             return X, Y_true
-
-    def build_from_cli(self):
-        '''
-        Opens a cli to build the netork
-        '''
-        print("\n\nCNN\n")
-
-    def build(self, settings=None):
-        '''
-        Unneeded.
-        '''
-        pass
 
     def new_weights(self, name, shape):
         '''
@@ -95,11 +90,12 @@ class CNN(NetworkBase):
 
         @return weights: TensorFlow Variable
         '''
-        weights = tf.Variable(
-            tf.truncated_normal(shape,
-                                stddev=0.05,
-                                dtype=self.precision,
-                                name='{}_Weights'.format(name)))
+        with self.graph.as_default():
+            weights = tf.Variable(
+                tf.truncated_normal(shape,
+                                    stddev=0.05,
+                                    dtype=self.precision,
+                                    name='{}_Weights'.format(name)))
         return weights
 
     def new_biases(self, name, shape):
@@ -111,22 +107,23 @@ class CNN(NetworkBase):
 
         @return biases: Tensorflow Variable
         '''
-        biases = tf.Variable(tf.constant(value=0.05,
-                                         dtype=self.precision,
-                                         shape=shape,
-                                         name='{}_Biases'.format(name)))
+        with self.graph.as_default():
+            biases = tf.Variable(tf.constant(value=0.05,
+                                             dtype=self.precision,
+                                             shape=shape,
+                                             name='{}_Biases'.format(name)))
         return biases
 
     def conv2d(self,
                layer_input=None,
                name='conv2d',
-               filter_size=1,
+               filter_size=2,
                num_filters=1,
                stride=1,
                padding='SAME',
                activation='relu',
                use_pooling=True,
-               kernel_size=1,
+               kernel_size=2,
                kernel_stride=1,
                ):
         '''
@@ -148,33 +145,35 @@ class CNN(NetworkBase):
         @return weights: TensorFlow Variable
         @return biases: TensorFlow Variable
         '''
-        input_shape = layer_input.get_shape().as_list()[-1]
-        shape = [filter_size, filter_size, input_shape, num_filters]
+        with self.graph.as_default():
+            input_shape = layer_input.get_shape().as_list()[-1]
+            shape = [filter_size, filter_size, input_shape, num_filters]
 
-        weights = self.new_weights(name, shape=shape)
-        biases = self.new_biases(name, shape=[num_filters])
+            weights = self.new_weights(name, shape=shape)
+            biases = self.new_biases(name, shape=[num_filters])
 
-        layer = tf.nn.conv2d(input=layer_input,
-                             filter=weights,
-                             strides=[1, stride, stride, 1],
-                             padding=padding,
-                             name='{}_Layer'.format(name))
-        layer += biases
+            layer = tf.nn.conv2d(input=layer_input,
+                                 filter=weights,
+                                 strides=[1, stride, stride, 1],
+                                 padding=padding,
+                                 name='{}_Layer'.format(name))
+            layer += biases
 
-        if use_pooling:
-            ksize_ = [1, kernel_size, kernel_size, 1]
-            strides_ = [1, kernel_stride, kernel_stride, 1]
-            layer = tf.nn.max_pool(value=layer,
-                                   ksize=ksize_,
-                                   strides=strides_,
-                                   padding=padding,
-                                   data_format='NHWC')
+            if use_pooling:
+                ksize_ = [1, kernel_size, kernel_size, 1]
+                strides_ = [1, kernel_stride, kernel_stride, 1]
+                layer = tf.nn.max_pool(value=layer,
+                                       ksize=ksize_,
+                                       strides=strides_,
+                                       padding=padding,
+                                       data_format='NHWC')
 
-        if activation == 'relu':
-            layer = tf.nn.relu(layer)
-        else:
-            raise ValueError("Unknown activation function in convolutional " +
-                             "layer")
+            if activation == 'relu':
+                layer = tf.nn.relu(layer)
+            else:
+                raise ValueError("Unknown activation function in convolutional " +
+                                 "layer")
+        self.layers.append(layer)
         return layer, weights, biases
 
     def flatten(self, settings):
@@ -188,19 +187,21 @@ class CNN(NetworkBase):
         @return flattened: TensorFlow Tensor | Flattend laer
         @return num_features: int
         '''
-        settings = self.configure_layer_settings(layer_type='flatten',
-                                                 user_parameters=settings)
-        layer_input = settings['layer_input']
+        with self.graph.as_default():
+            settings = self.configure_layer_settings(layer_type='flatten',
+                                                     user_parameters=settings)
+            layer_input = settings['layer_input']
 
-        # assume [num_images, img_height, img_width, num_channels]
-        input_shape = layer_input.get_shape()
+            # assume [num_images, img_height, img_width, num_channels]
+            input_shape = layer_input.get_shape()
 
-        # num_features = img_height * img_width * num_channels
-        num_features = input_shape[1:4].num_elements()
+            # num_features = img_height * img_width * num_channels
+            num_features = input_shape[1:4].num_elements()
 
-        # [num_images, num_features]
-        flattened = tf.reshape(layer_input, [-1, num_features])
+            # [num_images, num_features]
+            flattened = tf.reshape(layer_input, [-1, num_features])
 
+        self.layers.append(flattened)
         return flattened, num_features
 
     def fully_connected(self, settings):
@@ -218,27 +219,29 @@ class CNN(NetworkBase):
 
         @return layer: TensorFlow Tensor | FC layer
         '''
-        settings = self.configure_layer_settings(layer_type='fully_connected',
-                                                 user_parameters=settings)
+        with self.graph.as_default():
+            settings = self.configure_layer_settings(layer_type='fully_connected',
+                                                     user_parameters=settings)
 
-        layer_input = settings['layer_input']
-        name = settings['name']
-        num_outputs = settings['num_outputs']
-        use_activation = settings['use_activation']
-        activation = settings['activation']
+            layer_input = settings['layer_input']
+            name = settings['name']
+            num_outputs = settings['num_outputs']
+            use_activation = settings['use_activation']
+            activation = settings['activation']
 
-        input_shape = layer_input.get_shape().as_list()[-1]
-        weights = self.new_weights(name, shape=[input_shape, num_outputs])
-        biases = self.new_biases(name, shape=[num_outputs])
+            input_shape = layer_input.get_shape().as_list()[-1]
+            weights = self.new_weights(name, shape=[input_shape, num_outputs])
+            biases = self.new_biases(name, shape=[num_outputs])
 
-        layer = tf.matmul(layer_input, weights) + biases
+            layer = tf.matmul(layer_input, weights) + biases
 
-        if use_activation:
-            if activation == 'relu':
-                layer = tf.nn.relu(layer)
-            else:
-                raise ValueError("Unknown activation function in " +
-                                 "fully_connected layer")
+            if use_activation:
+                if activation == 'relu':
+                    layer = tf.nn.relu(layer)
+                else:
+                    raise ValueError("Unknown activation function in " +
+                                     "fully_connected layer")
+        self.layers.append(layer)
         return layer
 
     def prediction(self, settings):
@@ -253,13 +256,17 @@ class CNN(NetworkBase):
 
         @return regularized: TensorFlow Tensor (regularized @param layer_input)
         '''
-        settings = self.configure_layer_settings(layer_type='prediction',
-                                                 user_parameters=settings)
+        with self.graph.as_default():
+            settings = self.configure_layer_settings(layer_type='prediction',
+                                                     user_parameters=settings)
 
-        layer_input = settings['layer_input']
-        regularizer = settings['regularizer']
+            layer_input = settings['layer_input']
+            regularizer = settings['regularizer']
 
-        if regularizer == "softmax":
-            return tf.nn.softmax(layer_input)
-        else:
-            raise ValueError("Unkown regularizer for prediction")
+            if regularizer == "softmax":
+                prediction = tf.nn.softmax(layer_input)
+            else:
+                raise ValueError("Unkown regularizer for prediction")
+
+            self.prediction_layer = prediction
+            return prediction
