@@ -14,9 +14,9 @@ It was going to be an API of sorts, and eventuall I would like it to be, but I h
 - NetworkBase
     - graph, session, function definitions, gpu settings, precision
 - CNN
-    - CNN layers, cost, optimizer
+    - CNN layers
 - Trainer
-    - Optimize optimizer over batches and epochs
+    - cost, optimizer, saving
 ## TODO
 - [ ] Training on Google Cloud ML
 - [ ] CNN
